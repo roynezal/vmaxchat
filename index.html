@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>VMAXRAY-AI Agent</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#080b10;color:#dde4f0;display:flex;flex-direction:column}
+#header{background:#131824;padding:10px 14px;border-bottom:1px solid #2d3a50;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;gap:8px}
+#header h1{color:#58a6ff;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-btns{display:flex;gap:6px;align-items:center}
+.hdr-btn{background:none;border:1px solid #2d3a50;color:#8b949e;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:14px}
+.hdr-btn:hover{color:#58a6ff;border-color:#58a6ff}
+#status{font-size:11px;color:#6e7681;white-space:nowrap}
+#status.green{color:#00d47e}
+#status.red{color:#ff3651}
+
+#sidebar{position:fixed;top:0;left:-300px;width:280px;height:100%;background:#131824;border-right:1px solid #2d3a50;z-index:200;transition:left 0.3s;display:flex;flex-direction:column}
+#sidebar.open{left:0}
+#sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199;display:none}
+#sidebar-overlay.show{display:block}
+.sidebar-header{padding:16px;border-bottom:1px solid #2d3a50;display:flex;justify-content:space-between;align-items:center}
+.sidebar-header h2{color:#58a6ff;font-size:16px}
+#newChatBtn{background:#238636;color:white;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;margin:12px 16px}
+#sessionList{flex:1;overflow-y:auto;padding:8px}
+.session-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;font-size:13px;color:#8b949e;display:flex;justify-content:space-between;align-items:center}
+.session-item:hover,.session-item.active{background:#21262d;color:#dde4f0}
+.session-item .del{color:#ff3651;font-size:12px;padding:2px 6px;border-radius:4px}
+.session-item .del:hover{background:#ff365122}
+
+#chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.5;word-wrap:break-word;position:relative;}
+.msg-timestamp{font-size:10px;color:#6e7681;position:absolute;bottom:-15px;right:10px;}
+.msg.user .msg-timestamp{right:auto;left:10px;}
+.msg.user{align-self:flex-end;background:#1f6feb;color:white;border-bottom-right-radius:4px}
+.msg.assistant{align-self:flex-start;background:#21262d;border:1px solid #30363d;border-bottom-left-radius:4px}
+.msg.system{align-self:center;background:#0d1119;color:#6e7681;font-size:12px;max-width:95%;text-align:center}
+.msg pre{background:#0d1117;padding:8px;border-radius:6px;overflow-x:auto;margin:6px 0;font-size:12px}
+.msg code{font-family:'Courier New',monospace;font-size:12px}
+.msg .file-attach{display:inline-flex;align-items:center;gap:4px;background:#1f6feb33;padding:4px 8px;border-radius:6px;font-size:12px;margin:4px 0}
+
+#inputArea{background:#131824;padding:10px 12px;border-top:1px solid #2d3a50;display:flex;gap:8px;align-items:flex-end;flex-shrink:0;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+#attachBtn,#voiceBtn{background:none;border:1px solid #2d3a50;color:#8b949e;padding:10px;border-radius:10px;cursor:pointer;font-size:18px;flex-shrink:0}
+#attachBtn:hover,#voiceBtn:hover{color:#58a6ff;border-color:#58a6ff}
+#voiceBtn.recording{color:#ff3651;border-color:#ff3651;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+#query{flex:1;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:10px 12px;border-radius:10px;font-family:inherit;font-size:16px;outline:none;min-width:0;max-height:120px;resize:none}
+#query:focus{border-color:#58a6ff}
+#sendBtn{background:#238636;color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;white-space:nowrap;flex-shrink:0}
+#sendBtn:hover{background:#2ea043}
+#sendBtn:disabled{background:#6e7681;cursor:not-allowed}
+
+#filePreview{display:none;background:#131824;padding:8px 12px;border-top:1px solid #2d3a50;flex-shrink:0}
+#filePreview .fp-item{display:inline-flex;align-items:center;gap:6px;background:#21262d;padding:4px 10px;border-radius:6px;font-size:12px;margin:2px}
+#filePreview .fp-remove{color:#ff3651;cursor:pointer;font-weight:bold}
+
+.loading{display:inline-block;animation:blink 1s infinite}
+#ttsBtn.active{color:#00d47e;border-color:#00d47e}
+#ttsBtn.speaking{color:#ff9500;border-color:#ff9500;animation:pulse 1s infinite}
+@keyframes blink{50%{opacity:0.3}}
+
+#settings{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100;align-items:center;justify-content:center;padding:20px}
+#settings .modal{background:#131824;border:1px solid #2d3a50;border-radius:12px;padding:24px;max-width:400px;width:100%}
+#settings h2{color:#58a6ff;margin-bottom:16px;font-size:18px}
+#settings label{display:block;color:#8090aa;margin-bottom:6px;font-size:14px}
+#settings input{width:100%;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:12px;border-radius:8px;font-size:14px}
+#settings .btns{margin-top:16px;display:flex;gap:10px}
+#settings .btns button{flex:1;padding:12px;border-radius:8px;cursor:pointer;font-size:14px;border:none}
+#settings .saveBtn{background:#238636;color:white}
+#settings .cancelBtn{background:#21262d;color:#8090aa;border:1px solid #2d3a50!important}
+
+@media(min-width:768px){#chat{max-width:800px;margin:0 auto;width:100%}#inputArea{padding:12px 20px}}
+</style>
+</head>
+<body>
+
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div id="sidebar">
+  <div class="sidebar-header">
+    <h2>Chats</h2>
+    <button class="hdr-btn" onclick="closeSidebar()">✕</button>
+  </div>
+  <button id="newChatBtn" onclick="newChat()">+ New Chat</button>
+  <div id="sessionList"></div>
+</div>
+
+<div id="header">
+  <button class="hdr-btn" onclick="openSidebar()">☰</button>
+  <h1 id="chatTitle">VMAXRAY-AI</h1>
+  <div class="hdr-btns">
+    <span id="status"></span>
+    <button class="hdr-btn" id="ttsBtn" onclick="toggleTTS()" title="Voice readback">🔊</button>
+    <button class="hdr-btn" onclick="showSettings()">⚙️</button>
+  </div>
+</div>
+
+<div id="chat"></div>
+
+<div id="filePreview"></div>
+
+<div id="inputArea">
+  <button id="attachBtn" onclick="document.getElementById('fileInput').click()" title="Attach file">+</button>
+  <input type="file" id="fileInput" multiple accept="image/*,audio/*,video/*,.pdf,.txt,.md,.py,.js,.html,.css,.json,.csv,.doc,.docx,.xls,.xlsx" style="display:none" onchange="handleFiles(this.files)">
+  <button id="voiceBtn" onclick="toggleVoice()" title="Voice input">🎤</button>
+  <textarea id="query" rows="1" placeholder="Message VMAXRAY-AI..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+  <button id="sendBtn" onclick="sendMsg()">Send</button>
+</div>
+
+<div id="settings">
+  <div class="modal" style="max-width:480px;max-height:90vh;overflow-y:auto">
+    <h2>⚙️ Settings</h2>
+
+    <label>Active Provider:</label>
+    <select id="cfg_provider" style="width:100%;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:10px;border-radius:8px;font-size:14px;margin-bottom:12px">
+      <option value="auto">Auto (Smart Routing)</option>
+      <option value="groq">Groq (Free, Fast)</option>
+      <option value="openrouter">OpenRouter (Free Models)</option>
+      <option value="claude">Claude (Best Quality)</option>
+    </select>
+
+    <label>Groq Model:</label>
+    <select id="cfg_groq_model" style="width:100%;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:10px;border-radius:8px;font-size:14px;margin-bottom:12px">
+      <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (fast)</option>
+      <option value="llama-3.1-70b-versatile">Llama 3.1 70B (smarter)</option>
+      <option value="llama-3.3-70b-versatile">Llama 3.3 70B (best free)</option>
+      <option value="mixtral-8x7b-32768">Mixtral 8x7B (long context)</option>
+      <option value="gemma2-9b-it">Gemma 2 9B</option>
+    </select>
+
+    <label>OpenRouter Model:</label>
+    <select id="cfg_or_model" style="width:100%;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:10px;border-radius:8px;font-size:14px;margin-bottom:12px">
+      <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (free)</option>
+      <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (free)</option>
+      <option value="google/gemma-2-9b-it:free">Gemma 2 9B (free)</option>
+      <option value="microsoft/phi-3-mini-128k-instruct:free">Phi-3 Mini (free)</option>
+      <option value="anthropic/claude-haiku-4-5">Claude Haiku (paid)</option>
+      <option value="anthropic/claude-sonnet-4-5">Claude Sonnet (paid)</option>
+      <option value="openai/gpt-4o-mini">GPT-4o Mini (paid)</option>
+      <option value="openai/gpt-4o">GPT-4o (paid)</option>
+      <option value="custom">Custom model...</option>
+    </select>
+
+    <div id="customModelDiv" style="display:none;margin-bottom:12px">
+      <label>Custom Model ID:</label>
+      <input type="text" id="cfg_custom_model" placeholder="e.g. meta-llama/llama-3-8b" style="width:100%;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:10px;border-radius:8px;font-size:14px">
+    </div>
+
+    <label>Claude Model:</label>
+    <select id="cfg_claude_model" style="width:100%;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:10px;border-radius:8px;font-size:14px;margin-bottom:12px">
+      <option value="claude-haiku-4-5-20251001">Claude Haiku (cheapest)</option>
+      <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (best)</option>
+      <option value="claude-opus-4-6">Claude Opus 4.6 (most powerful)</option>
+    </select>
+
+    <label>Response Length:</label>
+    <select id="cfg_max_tokens" style="width:100%;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:10px;border-radius:8px;font-size:14px;margin-bottom:12px">
+      <option value="512">Short (512 tokens)</option>
+      <option value="1024" selected>Normal (1024 tokens)</option>
+      <option value="2048">Long (2048 tokens)</option>
+      <option value="4096">Very Long (4096 tokens)</option>
+    </select>
+
+    <label>Voice Speed:</label>
+    <input type="range" id="cfg_tts_rate" min="0.5" max="2" step="0.1" value="1.0"
+      style="width:100%;margin-bottom:4px"
+      oninput="document.getElementById('ttsRateVal').textContent=this.value+'x'">
+    <span id="ttsRateVal" style="font-size:12px;color:#8b949e">1.0x</span>
+
+    <hr style="border:none;border-top:1px solid #2d3a50;margin:16px 0">
+    <div style="font-size:13px;color:#58a6ff;margin-bottom:10px;font-weight:600">🔑 API Keys (saved in browser)</div>
+
+    <label>Groq API Key:</label>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <input type="password" id="cfg_groq_key" placeholder="gsk_..." style="flex:1;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:10px;border-radius:8px;font-size:13px">
+      <button onclick="toggleShow('cfg_groq_key')" style="background:#21262d;border:1px solid #2d3a50;color:#8b949e;padding:10px;border-radius:8px;cursor:pointer;font-size:12px">👁</button>
+    </div>
+
+    <label>OpenRouter API Key:</label>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <input type="password" id="cfg_or_key" placeholder="sk-or-..." style="flex:1;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:10px;border-radius:8px;font-size:13px">
+      <button onclick="toggleShow('cfg_or_key')" style="background:#21262d;border:1px solid #2d3a50;color:#8b949e;padding:10px;border-radius:8px;cursor:pointer;font-size:12px">👁</button>
+    </div>
+
+    <label>Anthropic (Claude) API Key:</label>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <input type="password" id="cfg_claude_key" placeholder="sk-ant-..." style="flex:1;background:#0d1119;border:1px solid #2d3a50;color:#dde4f0;padding:10px;border-radius:8px;font-size:13px">
+      <button onclick="toggleShow('cfg_claude_key')" style="background:#21262d;border:1px solid #2d3a50;color:#8b949e;padding:10px;border-radius:8px;cursor:pointer;font-size:12px">👁</button>
+    </div>
+
+    <div style="padding:10px;background:#0d1119;border-radius:8px;font-size:11px;color:#6e7681">
+      🔒 Keys stored locally in your browser only. Sent to Win7 server per request — never to third parties.<br>
+      Leave blank to use keys already set on the Win7 server.
+    </div>
+
+    <div class="btns" style="margin-top:16px">
+      <button class="saveBtn" onclick="saveSettings()">Save</button>
+      <button class="cancelBtn" onclick="closeSettings()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const chat=document.getElementById('chat'),query=document.getElementById('query'),sendBtn=document.getElementById('sendBtn'),status=document.getElementById('status'),filePreview=document.getElementById('filePreview');
+// Always use current GAS URL — never use localStorage (may have stale old deployment URL)
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyGZu737GlescWK2_M1FtvccLTYh4xAx0MAA7SD4oGgGlWhqJN_aLAkNQL1gRRUoE2Qhg/exec';
+let serverUrl = GAS_URL;
+let sessionId=localStorage.getItem('vmx_session')||null;
+let pendingFiles=[];
+let recognition=null;
+let isRecording=false;
+let ttsEnabled=localStorage.getItem('vmx_tts')==='true';
+let currentUtterance=null;
+
+// Apply TTS button state on load
+setTimeout(function(){
+  var btn=document.getElementById('ttsBtn');
+  if(btn && ttsEnabled) btn.classList.add('active');
+},100);
+
+if('webkitSpeechRecognition'in window||'SpeechRecognition'in window){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();
+  recognition.continuous=false;
+  recognition.interimResults=true;
+  recognition.onresult=function(e){
+    let t='';for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;
+    query.value=t;
+  };
+  recognition.onend=function(){isRecording=false;document.getElementById('voiceBtn').classList.remove('recording')};
+  recognition.onerror=function(){isRecording=false;document.getElementById('voiceBtn').classList.remove('recording')};
+}
+
+function toggleVoice(){
+  if(!recognition)return alert('Speech not supported in this browser');
+  if(isRecording){recognition.stop();isRecording=false;document.getElementById('voiceBtn').classList.remove('recording')}
+  else{recognition.start();isRecording=true;document.getElementById('voiceBtn').classList.add('recording')}
+}
+
+function handleFiles(files){
+  for(let f of files){
+    const reader=new FileReader();
+    reader.onload=function(e){
+      pendingFiles.push({name:f.name,type:f.type,data:e.target.result.split(',')[1]});
+      updateFilePreview();
+    };
+    reader.readAsDataURL(f);
+  }
+}
+
+function updateFilePreview(){
+  if(pendingFiles.length===0){filePreview.style.display='none';return}
+  filePreview.style.display='block';
+  filePreview.innerHTML=pendingFiles.map((f,i)=>`<span class="fp-item">${f.name} <span class="fp-remove" onclick="removeFile(${i})">✕</span></span>`).join('');
+}
+
+function removeFile(i){pendingFiles.splice(i,1);updateFilePreview()}
+
+async function sendMsg(){
+  const text=query.value.trim();
+  if(!text&&pendingFiles.length===0)return;
+  
+  const displayText=text||(pendingFiles.length+' file(s) attached');
+  addMsg('user',displayText);
+  
+  if(pendingFiles.length>0){
+    const fileNames=pendingFiles.map(f=>`📎 ${f.name}`).join('\n');
+    addMsg('system',fileNames);
+  }
+  
+  query.value='';query.style.height='auto';
+  sendBtn.disabled=true;
+  
+  const loading=document.createElement('div');
+  loading.className='msg assistant loading';
+  loading.textContent='Thinking...';
+  chat.appendChild(loading);
+  chat.scrollTop=chat.scrollHeight;
+  
+  const files=pendingFiles;
+  pendingFiles=[];
+  updateFilePreview();
+  
+  try{
+    var cfg = loadCfg();
+    const res=await fetch(serverUrl+'?action=chat',{
+      method:'POST',
+      body:JSON.stringify({
+        prompt:text,
+        session_id:sessionId,
+        files:files,
+        provider:    cfg.provider    || 'auto',
+        groq_model:  cfg.groq_model  || 'llama-3.1-8b-instant',
+        or_model:    cfg.or_model    || 'mistralai/mistral-7b-instruct:free',
+        claude_model:cfg.claude_model|| 'claude-haiku-4-5-20251001',
+        max_tokens:  parseInt(cfg.max_tokens||'1024'),
+        tts_rate:    parseFloat(cfg.tts_rate||'1.0'),
+        groq_key:    cfg.groq_key    || '',
+        or_key:      cfg.or_key      || '',
+        claude_key:  cfg.claude_key  || '',
+      })
+    });
+    
+    if(loading.parentNode)chat.removeChild(loading);
+    
+    if(res.ok){
+      const data=await res.json();
+      addMsg('assistant',data.response);
+      var ttsRate = parseFloat((loadCfg().tts_rate)||'1.0');
+      speak(data.response, ttsRate);
+      if(data.session_id){sessionId=data.session_id;localStorage.setItem('vmx_session',sessionId)}
+    }else{
+      addMsg('assistant','Error: '+res.status);
+    }
+  }catch(e){
+    if(loading.parentNode)chat.removeChild(loading);
+    addMsg('assistant','Connection error: '+e.message);
+  }
+  
+  sendBtn.disabled=false;
+  query.focus();
+}
+
+function addMsg(type,text){
+  const div=document.createElement('div');
+  div.className='msg '+type;
+  div.innerHTML=formatMsg(text);
+  // Add timestamp
+  const timestampDiv=document.createElement('div');
+  timestampDiv.className='msg-timestamp';
+  const now=new Date();
+  timestampDiv.textContent=now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  div.appendChild(timestampDiv);
+  chat.appendChild(div);
+  chat.scrollTop=chat.scrollHeight;
+}
+
+function formatMsg(text){
+  if(!text)return '';
+  text=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  text=text.replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>');
+  text=text.replace(/`([^`]+)`/g,'<code>$1</code>');
+  text=text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  text=text.replace(/\n/g,'<br>');
+  return text;
+}
+
+query.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'});
+
+// ── TTS ──────────────────────────────────────────────────────
+function toggleTTS(){
+  ttsEnabled=!ttsEnabled;
+  localStorage.setItem('vmx_tts', ttsEnabled);
+  var btn=document.getElementById('ttsBtn');
+  if(ttsEnabled){
+    btn.classList.add('active');
+    speak('Voice readback enabled');
+  } else {
+    btn.classList.remove('active');
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+  }
+}
+
+function speak(text, rate){
+  if(!ttsEnabled) return;
+  if(!window.speechSynthesis) return;
+  // Cancel any ongoing speech
+  window.speechSynthesis.cancel();
+  // Clean text — remove markdown, code blocks, URLs
+  var clean = text
+    .replace(/```[\s\S]*?```/g, 'code block omitted')
+    .replace(/`[^`]+`/g, '')
+    .replace(/\*\*(.+?)\*\*/g,'$1')
+    .replace(/\*(.+?)\*/g,'$1')
+    .replace(/#{1,6}\s/g,'')
+    .replace(/https?:\/\/\S+/g,'link')
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g,'$1')
+    .trim();
+  // Limit length for TTS
+  if(clean.length > 500) clean = clean.substring(0,500) + '... and more.';
+  var utter = new SpeechSynthesisUtterance(clean);
+  utter.lang  = 'en-US';
+  utter.rate  = rate || 1.0;
+  utter.pitch = 1.0;
+  var btn = document.getElementById('ttsBtn');
+  utter.onstart = function(){ if(btn) btn.classList.add('speaking'); };
+  utter.onend   = function(){ if(btn){ btn.classList.remove('speaking'); if(ttsEnabled) btn.classList.add('active'); }};
+  utter.onerror = function(){ if(btn){ btn.classList.remove('speaking'); if(ttsEnabled) btn.classList.add('active'); }};
+  currentUtterance = utter;
+  window.speechSynthesis.speak(utter);
+}
+
+async function checkStatus(){
+  try{
+    const res=await fetch(serverUrl+'?action=health');
+    if(res.ok){
+      const data=await res.json();
+      if(data.status==='ok'){
+        status.textContent='● Online';
+        status.className='green';
+        addMsg('system','Connected to VMAXRAY-AI Agent');
+      } else {
+        throw new Error('bad status');
+      }
+    } else { throw new Error('http '+res.status); }
+  }catch(e){
+    status.textContent='● Offline';
+    status.className='red';
+    addMsg('system','Cannot connect to server.');
+  }
+}
+
+async function loadSessions(){
+  // Sessions not supported via GAS tunnel — stub out silently
+  document.getElementById('sessionList').innerHTML='<div style="padding:12px;color:#6e7681;font-size:12px;">Session history not available via GAS tunnel</div>';
+}
+
+function selectSession(id){
+  sessionId=id;
+  localStorage.setItem('vmx_session',id);
+  chat.innerHTML='';
+  loadChatHistory();
+  closeSidebar();
+  loadSessions();
+}
+
+async function loadChatHistory(){
+  // Not supported via GAS tunnel
+}
+
+async function newChat(){
+  sessionId=null;
+  localStorage.removeItem('vmx_session');
+  chat.innerHTML='';
+  document.getElementById('chatTitle').textContent='VMAXRAY-AI';
+  addMsg('system','New chat started');
+  closeSidebar();
+}
+
+async function deleteSession(id){
+  if(sessionId===id){sessionId=null;localStorage.removeItem('vmx_session');chat.innerHTML='';}
+}
+
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebar-overlay').classList.add('show');loadSessions()}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('show')}
+
+function showSettings(){
+  // Load saved values
+  var cfg = loadCfg();
+  document.getElementById('cfg_provider').value    = cfg.provider    || 'auto';
+  document.getElementById('cfg_groq_model').value  = cfg.groq_model  || 'llama-3.1-8b-instant';
+  document.getElementById('cfg_or_model').value    = cfg.or_model    || 'mistralai/mistral-7b-instruct:free';
+  document.getElementById('cfg_claude_model').value= cfg.claude_model|| 'claude-haiku-4-5-20251001';
+  document.getElementById('cfg_max_tokens').value  = cfg.max_tokens  || '1024';
+  document.getElementById('cfg_tts_rate').value    = cfg.tts_rate    || '1.0';
+  document.getElementById('ttsRateVal').textContent= (cfg.tts_rate||'1.0') + 'x';
+  document.getElementById('cfg_groq_key').value   = cfg.groq_key   || '';
+  document.getElementById('cfg_or_key').value     = cfg.or_key     || '';
+  document.getElementById('cfg_claude_key').value = cfg.claude_key || '';
+  document.getElementById('customModelDiv').style.display =
+    (cfg.or_model === 'custom') ? 'block' : 'none';
+  if(cfg.custom_model) document.getElementById('cfg_custom_model').value = cfg.custom_model;
+  document.getElementById('cfg_or_model').onchange = function(){
+    document.getElementById('customModelDiv').style.display =
+      this.value === 'custom' ? 'block' : 'none';
+  };
+  document.getElementById('settings').style.display='flex';
+}
+function closeSettings(){document.getElementById('settings').style.display='none'}
+function loadCfg(){
+  try{ return JSON.parse(localStorage.getItem('vmx_cfg')||'{}'); }catch(e){ return {}; }
+}
+function toggleShow(id){
+  var el=document.getElementById(id);
+  el.type = el.type==='password' ? 'text' : 'password';
+}
+function saveSettings(){
+  var orModel = document.getElementById('cfg_or_model').value;
+  if(orModel === 'custom') orModel = document.getElementById('cfg_custom_model').value.trim() || orModel;
+  var cfg = {
+    provider:     document.getElementById('cfg_provider').value,
+    groq_model:   document.getElementById('cfg_groq_model').value,
+    or_model:     orModel,
+    claude_model: document.getElementById('cfg_claude_model').value,
+    max_tokens:   document.getElementById('cfg_max_tokens').value,
+    tts_rate:     document.getElementById('cfg_tts_rate').value,
+    custom_model: document.getElementById('cfg_custom_model').value,
+    groq_key:     document.getElementById('cfg_groq_key').value.trim(),
+    or_key:       document.getElementById('cfg_or_key').value.trim(),
+    claude_key:   document.getElementById('cfg_claude_key').value.trim(),
+  };
+  localStorage.setItem('vmx_cfg', JSON.stringify(cfg));
+  closeSettings();
+  addMsg('system','Settings saved. Provider: ' + cfg.provider + ' | Model: ' + cfg.or_model);
+}
+
+checkStatus();
+if(sessionId)loadChatHistory();
+</script>
+</body>
+</html>
