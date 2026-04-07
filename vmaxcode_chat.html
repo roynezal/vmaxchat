@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VMAXCODE</title>
+<style>
+:root{--bg:#0a0a0f;--surface:#1a1a2e;--border:#333;--text:#e0e0e0;--accent:#00ff88;--accent-dim:#00cc6a;--user-msg:#1a3a2e;--ai-msg:#1a1a3e;--error:#ff4444}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+#header{background:var(--surface);padding:0.75rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+#header h1{font-size:1rem;color:var(--accent)}
+#header .status{font-size:0.75rem;color:#888}
+#header .provider{font-size:0.7rem;color:var(--accent-dim);background:rgba(0,255,136,0.1);padding:2px 8px;border-radius:10px}
+#messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.75rem;-webkit-overflow-scrolling:touch}
+.message{max-width:85%;padding:0.75rem 1rem;border-radius:12px;line-height:1.5;font-size:0.9rem;word-wrap:break-word}
+.message.user{align-self:flex-end;background:var(--user-msg);border-bottom-right-radius:4px}
+.message.ai{align-self:flex-start;background:var(--ai-msg);border-bottom-left-radius:4px}
+.message .time{font-size:0.65rem;color:#666;margin-top:0.25rem}
+.message pre{background:#000;padding:0.5rem;border-radius:6px;overflow-x:auto;margin:0.5rem 0;font-size:0.8rem}
+.message code{background:#000;padding:2px 4px;border-radius:3px;font-size:0.85em}
+#input-area{background:var(--surface);padding:0.75rem;border-top:1px solid var(--border)}
+#input-row{display:flex;gap:0.5rem;align-items:flex-end}
+#message-input{flex:1;background:#0a0a1a;border:1px solid var(--border);color:var(--text);padding:0.75rem;border-radius:20px;font-size:0.9rem;resize:none;max-height:120px;min-height:40px;font-family:inherit}
+#message-input:focus{outline:none;border-color:var(--accent)}
+.btn{background:var(--accent);color:#000;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn:hover{background:var(--accent-dim)}
+.btn:disabled{background:#444;cursor:not-allowed}
+.btn-icon{background:transparent;color:#888;border:1px solid var(--border);border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn-icon:hover{color:var(--accent);border-color:var(--accent)}
+.btn-icon.recording{color:#ff4444;border-color:#ff4444}
+#file-input{display:none}
+#typing{font-size:0.8rem;color:#888;padding:0.5rem 1rem;display:none}
+.welcome{text-align:center;color:#666;padding:2rem}
+.welcome h2{color:var(--accent);margin-bottom:0.5rem}
+@media(max-width:600px){.message{max-width:95%}#header h1{font-size:0.85rem}}
+</style>
+</head>
+<body>
+<div id="header">
+<div>
+<h1>🤖 VMAXCODE</h1>
+<div class="status" id="status">Connecting...</div>
+</div>
+<div style="display:flex;gap:0.5rem;align-items:center">
+<span class="provider" id="provider-badge">Loading...</span>
+<button class="btn-icon" onclick="document.getElementById('file-input').click()" title="Upload file">📎</button>
+<button class="btn-icon" id="voice-btn" onclick="toggleVoice()" title="Voice input">🎤</button>
+</div>
+</div>
+<input type="file" id="file-input" onchange="uploadFile(this)">
+<div id="messages">
+<div class="welcome">
+<h2>Welcome back, VMAX!</h2>
+<p>AI-powered chat with voice, files, and full system context.</p>
+</div>
+</div>
+<div id="typing">🤖 AI is thinking...</div>
+<div id="input-area">
+<div id="input-row">
+<textarea id="message-input" placeholder="Message VMAXRAY-AI..." rows="1" onkeydown="handleKey(event)"></textarea>
+<button class="btn" id="send-btn" onclick="sendMessage()">➤</button>
+</div>
+</div>
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbwTvs_1_4ZjDi7HSrpScpgHOGWeMsba0_Ia17skX6vUKCfeU-UlEz2h2wpNf7p2Prm5Fw/exec';
+var SECRET = 'VMAXRAY2025';
+var sessionId = localStorage.getItem('vmaxcode_session') || null;
+var recognition = null;
+var isRecording = false;
+
+// ── SPEECH ──────────────────────────────────────────────────────
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = function(e) {
+        document.getElementById('message-input').value = e.results[0][0].transcript;
+        isRecording = false;
+        document.getElementById('voice-btn').classList.remove('recording');
+    };
+    recognition.onerror = function() { isRecording = false; document.getElementById('voice-btn').classList.remove('recording'); };
+    recognition.onend = function() { isRecording = false; document.getElementById('voice-btn').classList.remove('recording'); };
+}
+
+function toggleVoice() {
+    if (!recognition) { alert('Speech not supported'); return; }
+    if (isRecording) { recognition.stop(); } else { recognition.start(); isRecording = true; document.getElementById('voice-btn').classList.add('recording'); }
+}
+
+function speak(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        var clean = text.replace(/[#*`_~]/g, '').substring(0, 300);
+        var u = new SpeechSynthesisUtterance(clean);
+        u.rate = 1; speechSynthesis.speak(u);
+    }
+}
+
+// ── SEND MESSAGE VIA GAS ────────────────────────────────────────
+function sendMessage() {
+    var input = document.getElementById('message-input');
+    var text = input.value.trim();
+    if (!text) return;
+    
+    if (!sessionId) sessionId = 'vc_' + Date.now().toString(36);
+    
+    addMessage('user', text);
+    input.value = '';
+    input.style.height = 'auto';
+    document.getElementById('typing').style.display = 'block';
+    document.getElementById('send-btn').disabled = true;
+    
+    var payload = JSON.stringify({
+        prompt: text,
+        session_id: sessionId
+    });
+    
+    fetch(GAS_URL + '?action=chat_minios&secret=' + SECRET, {
+        method: 'POST',
+        body: payload
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        document.getElementById('typing').style.display = 'none';
+        document.getElementById('send-btn').disabled = false;
+        if (data.response) {
+            addMessage('ai', data.response);
+            speak(data.response);
+            if (data.session_id) {
+                sessionId = data.session_id;
+                localStorage.setItem('vmaxcode_session', sessionId);
+            }
+        } else if (data.error) {
+            addMessage('ai', '❌ ' + data.error);
+        } else {
+            addMessage('ai', '⚠️ No response received');
+        }
+    })
+    .catch(function(e) {
+        document.getElementById('typing').style.display = 'none';
+        document.getElementById('send-btn').disabled = false;
+        addMessage('ai', '❌ Connection error: ' + e.message);
+    });
+}
+
+function addMessage(role, content) {
+    var messages = document.getElementById('messages');
+    var welcome = messages.querySelector('.welcome');
+    if (welcome) welcome.remove();
+    
+    var div = document.createElement('div');
+    div.className = 'message ' + role;
+    div.innerHTML = formatMessage(content) + '<div class="time">' + new Date().toLocaleTimeString() + '</div>';
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function formatMessage(text) {
+    text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    text = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/\n/g, '<br>');
+    return text;
+}
+
+function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function uploadFile(input) {
+    var file = input.files[0];
+    if (!file) return;
+    addMessage('user', '📎 Uploaded: ' + file.name);
+    input.value = '';
+}
+
+// ── INIT ────────────────────────────────────────────────────────
+fetch(GAS_URL + '?action=health')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        document.getElementById('status').textContent = '● Online';
+        document.getElementById('status').style.color = '#00ff88';
+    })
+    .catch(function() {
+        document.getElementById('status').textContent = '○ Offline';
+        document.getElementById('status').style.color = '#ff4444';
+    });
+</script>
+</body>
+</html>
