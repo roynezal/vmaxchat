@@ -2,12 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>VMAXCODE — Web Terminal</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xterm-addon-webgl@0.16.0/lib/xterm-addon-webgl.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
 <style>
 :root {
@@ -20,21 +19,23 @@
   --border: #0d3a4f;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; }
+html, body { height: 100%; height: 100dvh; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; }
 body { display: flex; flex-direction: column; }
 
 #header {
   background: var(--surface);
-  padding: 8px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
   font-size: 0.75rem;
+  flex-wrap: wrap;
+  gap: 6px;
 }
-#header .title { color: var(--accent); font-size: 0.85rem; letter-spacing: 0.1em; }
-#header .status { display: flex; gap: 12px; align-items: center; }
+#header .title { color: var(--accent); font-size: 0.85rem; letter-spacing: 0.1em; white-space: nowrap; }
+#header .status { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 #header .status .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 #header .status .dot.online { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
 #header .status .dot.offline { background: #ff3355; }
@@ -44,51 +45,39 @@ body { display: flex; flex-direction: column; }
 #terminal-container {
   flex: 1;
   overflow: hidden;
-  padding: 4px;
+  padding: 2px;
+  min-height: 0;
 }
-#terminal { height: 100%; }
+#terminal { height: 100%; width: 100%; }
 
 #footer {
   background: var(--surface);
-  padding: 4px 16px;
+  padding: 4px 12px;
   border-top: 1px solid var(--border);
   font-size: 0.6rem;
   color: var(--muted);
   display: flex;
   justify-content: space-between;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
-/* Voice button */
-#voiceBtn {
+#voiceBtn, #fileBtn {
   background: none;
   border: 1px solid var(--border);
   color: var(--muted);
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.7rem;
   font-family: inherit;
+  white-space: nowrap;
 }
-#voiceBtn:hover { color: var(--accent); border-color: var(--accent); }
+#voiceBtn:hover, #fileBtn:hover { color: var(--accent); border-color: var(--accent); }
 #voiceBtn.recording { color: #ff3355; border-color: #ff3355; animation: blink 1s infinite; }
-
-/* File input */
 #fileInput { display: none; }
-#fileBtn {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.7rem;
-  font-family: inherit;
-  margin-right: 8px;
-}
-#fileBtn:hover { color: var(--accent); border-color: var(--accent); }
 
-/* Overlay for file upload progress */
 #overlay {
   display: none;
   position: fixed;
@@ -119,6 +108,21 @@ body { display: flex; flex-direction: column; }
   background: var(--accent2);
   width: 0%;
   transition: width 0.3s;
+}
+
+/* Mobile optimizations */
+@media (max-width: 600px) {
+  #header { padding: 6px 8px; font-size: 0.65rem; }
+  #header .title { font-size: 0.75rem; }
+  #header .status { gap: 4px; }
+  #voiceBtn, #fileBtn { padding: 3px 6px; font-size: 0.6rem; }
+  #footer { padding: 3px 8px; font-size: 0.5rem; }
+  #terminal-container { padding: 1px; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  #header { padding: 4px 8px; }
+  #footer { padding: 2px 8px; }
 }
 </style>
 </head>
@@ -154,17 +158,16 @@ body { display: flex; flex-direction: column; }
 // ── CONFIG ──────────────────────────────────────────────────────
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbwTvs_1_4ZjDi7HSrpScpgHOGWeMsba0_Ia17skX6vUKCfeU-UlEz2h2wpNf7p2Prm5Fw/exec';
 var SECRET  = 'VMAXRAY2025';
-var POLL_INTERVAL = 300; // ms for output polling
+var POLL_INTERVAL = 300;
 
 // ── STATE ───────────────────────────────────────────────────────
 var offset = 0;
 var connected = false;
-var reconnectTimer = null;
 
 // ── XTERM SETUP ─────────────────────────────────────────────────
 var term = new Terminal({
   cursorBlink: true,
-  fontSize: 14,
+  fontSize: window.innerWidth < 600 ? 11 : 14,
   fontFamily: "'Share Tech Mono', monospace",
   theme: {
     background: '#030a0f',
@@ -186,25 +189,31 @@ var term = new Terminal({
 var fitAddon = new FitAddon.FitAddon();
 term.loadAddon(fitAddon);
 term.open(document.getElementById('terminal'));
-fitAddon.fit();
 
-// WebGL renderer if available
-try {
-  var webglAddon = new WebglAddon.WebglAddon();
-  term.loadAddon(webglAddon);
-} catch(e) {}
+function doFit() {
+  try { fitAddon.fit(); } catch(e) {}
+}
+doFit();
 
-window.addEventListener('resize', function() { fitAddon.fit(); sendResize(); });
+window.addEventListener('resize', function() { doFit(); sendResize(); });
+window.addEventListener('orientationchange', function() { setTimeout(doFit, 200); setTimeout(sendResize, 300); });
 
 // ── TERMINAL INPUT → GAS ────────────────────────────────────────
 term.onData(function(data) {
   sendInput(data);
 });
 
+term.onKey(function(e) {
+  // Ensure all key events are captured
+  sendInput(e.key);
+});
+
 function sendInput(data) {
+  if (!data) return;
   var b64 = btoa(unescape(encodeURIComponent(data)));
   fetch(GAS_URL + '?action=vmaxcode_input&secret=' + SECRET, {
     method: 'POST',
+    mode: 'no-cors',
     body: JSON.stringify({ data: b64 })
   }).catch(function() {});
 }
@@ -214,6 +223,7 @@ function sendResize() {
   var rows = term.rows;
   fetch(GAS_URL + '?action=vmaxcode_resize&secret=' + SECRET, {
     method: 'POST',
+    mode: 'no-cors',
     body: JSON.stringify({ cols: cols, rows: rows })
   }).catch(function() {});
 }
@@ -229,16 +239,13 @@ function pollOutput() {
           try {
             var raw = decodeURIComponent(escape(atob(chunk.chunk)));
             term.write(raw);
-          } catch(e) {
-            // Skip malformed chunks
-          }
+          } catch(e) {}
           offset = chunk.offset + 1;
         }
         document.getElementById('chunkCount').textContent = data.total;
         document.getElementById('offsetCount').textContent = offset;
         setStatus('online');
       } else {
-        // No new data but server responded — still connected
         if (connected) setStatus('online');
       }
     })
@@ -316,9 +323,9 @@ function uploadFile(input) {
     
     fetch(GAS_URL + '?action=vmaxcode_upload&secret=' + SECRET, {
       method: 'POST',
+      mode: 'no-cors',
       body: JSON.stringify({ name: file.name, data: b64 })
-    }).then(function(r) { return r.json(); })
-    .then(function(data) {
+    }).then(function() {
       fill.style.width = '100%';
       text.textContent = 'Upload complete!';
       setTimeout(function() { overlay.classList.remove('show'); }, 1000);
@@ -337,7 +344,7 @@ function checkStatus() {
   fetch(GAS_URL + '?action=vmaxcode_status&secret=' + SECRET)
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      if (data.online) {
+      if (data && data.online) {
         setStatus('online');
       } else {
         setStatus('offline');
@@ -357,12 +364,12 @@ checkStatus();
 
 // Start output polling
 setInterval(pollOutput, POLL_INTERVAL);
-
-// Status check every 30s
 setInterval(checkStatus, 30000);
-
-// Initial poll
 setTimeout(pollOutput, 500);
+
+// Focus terminal on tap/click (mobile)
+document.addEventListener('click', function() { term.focus(); });
+document.addEventListener('touchstart', function() { term.focus(); });
 </script>
 </body>
 </html>
