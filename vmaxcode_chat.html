@@ -8,51 +8,64 @@
 :root{--bg:#0a0a0f;--surface:#1a1a2e;--border:#333;--text:#e0e0e0;--accent:#00ff88;--accent-dim:#00cc6a;--user-msg:#1a3a2e;--ai-msg:#1a1a3e;--error:#ff4444}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
-#header{background:var(--surface);padding:0.75rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-#header h1{font-size:1rem;color:var(--accent)}
-#header .status{font-size:0.75rem;color:#888}
-#header .provider{font-size:0.7rem;color:var(--accent-dim);background:rgba(0,255,136,0.1);padding:2px 8px;border-radius:10px}
-#messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.75rem;-webkit-overflow-scrolling:touch}
-.message{max-width:85%;padding:0.75rem 1rem;border-radius:12px;line-height:1.5;font-size:0.9rem;word-wrap:break-word}
+#header{background:var(--surface);padding:0.6rem 0.8rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:6px}
+#header h1{font-size:0.95rem;color:var(--accent);white-space:nowrap}
+#header .left{display:flex;flex-direction:column;gap:2px}
+#header .status{font-size:0.65rem;color:#888}
+#header .right{display:flex;gap:4px;align-items:center;flex-wrap:nowrap}
+#provider-select{background:#0a0a1a;border:1px solid var(--border);color:var(--accent);padding:4px 6px;border-radius:6px;font-size:0.7rem;font-family:inherit;max-width:140px}
+#messages{flex:1;overflow-y:auto;padding:0.8rem;display:flex;flex-direction:column;gap:0.6rem;-webkit-overflow-scrolling:touch}
+.message{max-width:88%;padding:0.65rem 0.9rem;border-radius:12px;line-height:1.5;font-size:0.88rem;word-wrap:break-word;position:relative}
 .message.user{align-self:flex-end;background:var(--user-msg);border-bottom-right-radius:4px}
 .message.ai{align-self:flex-start;background:var(--ai-msg);border-bottom-left-radius:4px}
-.message .time{font-size:0.65rem;color:#666;margin-top:0.25rem}
-.message pre{background:#000;padding:0.5rem;border-radius:6px;overflow-x:auto;margin:0.5rem 0;font-size:0.8rem}
-.message code{background:#000;padding:2px 4px;border-radius:3px;font-size:0.85em}
-#input-area{background:var(--surface);padding:0.75rem;border-top:1px solid var(--border)}
-#input-row{display:flex;gap:0.5rem;align-items:flex-end}
-#message-input{flex:1;background:#0a0a1a;border:1px solid var(--border);color:var(--text);padding:0.75rem;border-radius:20px;font-size:0.9rem;resize:none;max-height:120px;min-height:40px;font-family:inherit}
+.message .time{font-size:0.6rem;color:#555;margin-top:0.2rem}
+.message pre{background:#000;padding:0.4rem;border-radius:5px;overflow-x:auto;margin:0.4rem 0;font-size:0.75rem}
+.message code{background:#000;padding:1px 4px;border-radius:3px;font-size:0.82em}
+#input-area{background:var(--surface);padding:0.6rem;border-top:1px solid var(--border)}
+#input-row{display:flex;gap:0.4rem;align-items:flex-end}
+#message-input{flex:1;background:#0a0a1a;border:1px solid var(--border);color:var(--text);padding:0.65rem;border-radius:18px;font-size:0.88rem;resize:none;max-height:100px;min-height:36px;font-family:inherit}
 #message-input:focus{outline:none;border-color:var(--accent)}
-.btn{background:var(--accent);color:#000;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn{background:var(--accent);color:#000;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .btn:hover{background:var(--accent-dim)}
 .btn:disabled{background:#444;cursor:not-allowed}
-.btn-icon{background:transparent;color:#888;border:1px solid var(--border);border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn-icon{background:transparent;color:#888;border:1px solid var(--border);border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .btn-icon:hover{color:var(--accent);border-color:var(--accent)}
 .btn-icon.recording{color:#ff4444;border-color:#ff4444}
+.btn-icon.active{color:var(--accent);border-color:var(--accent)}
 #file-input{display:none}
-#typing{font-size:0.8rem;color:#888;padding:0.5rem 1rem;display:none}
-.welcome{text-align:center;color:#666;padding:2rem}
-.welcome h2{color:var(--accent);margin-bottom:0.5rem}
-@media(max-width:600px){.message{max-width:95%}#header h1{font-size:0.85rem}}
+#typing{font-size:0.75rem;color:#888;padding:0.4rem 0.8rem;display:none}
+.welcome{text-align:center;color:#666;padding:1.5rem}
+.welcome h2{color:var(--accent);margin-bottom:0.4rem;font-size:1.1rem}
+.welcome p{font-size:0.8rem}
+@media(max-width:600px){.message{max-width:95%}#header h1{font-size:0.8rem}#provider-select{max-width:100px;font-size:0.6rem}}
 </style>
 </head>
 <body>
 <div id="header">
-<div>
+<div class="left">
 <h1>🤖 VMAXCODE</h1>
 <div class="status" id="status">Connecting...</div>
 </div>
-<div style="display:flex;gap:0.5rem;align-items:center">
-<span class="provider" id="provider-badge">Loading...</span>
-<button class="btn-icon" onclick="document.getElementById('file-input').click()" title="Upload file">📎</button>
+<div class="right">
+<select id="provider-select" onchange="saveProvider()">
+<option value="0">DeepSeek Chat</option>
+<option value="1">OpenRouter Qwen</option>
+<option value="2">OpenRouter Nemotron</option>
+<option value="3">OpenRouter MiniMax</option>
+<option value="4">OpenRouter Step</option>
+<option value="5">Groq Llama 8B</option>
+<option value="6">Groq Llama 70B</option>
+</select>
+<button class="btn-icon" onclick="document.getElementById('file-input').click()" title="Upload">📎</button>
 <button class="btn-icon" id="voice-btn" onclick="toggleVoice()" title="Voice input">🎤</button>
+<button class="btn-icon" id="tts-btn" onclick="toggleTTS()" title="Voice readback">🔊</button>
 </div>
 </div>
 <input type="file" id="file-input" onchange="uploadFile(this)">
 <div id="messages">
 <div class="welcome">
 <h2>Welcome back, VMAX!</h2>
-<p>AI-powered chat with voice, files, and full system context.</p>
+<p>AI-powered chat with voice, files, and system context.</p>
 </div>
 </div>
 <div id="typing">🤖 AI is thinking...</div>
@@ -63,14 +76,19 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 </div>
 </div>
 <script>
-// ── CONFIG ──────────────────────────────────────────────────────
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbwTvs_1_4ZjDi7HSrpScpgHOGWeMsba0_Ia17skX6vUKCfeU-UlEz2h2wpNf7p2Prm5Fw/exec';
 var SECRET = 'VMAXRAY2025';
 var sessionId = localStorage.getItem('vmaxcode_session') || null;
 var recognition = null;
 var isRecording = false;
+var ttsEnabled = localStorage.getItem('vmaxcode_tts') === 'true';
+var providerIdx = parseInt(localStorage.getItem('vmaxcode_provider') || '0');
 
-// ── SPEECH ──────────────────────────────────────────────────────
+// Apply saved settings
+document.getElementById('provider-select').value = providerIdx;
+if (ttsEnabled) document.getElementById('tts-btn').classList.add('active');
+
+// Speech recognition
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
@@ -90,54 +108,46 @@ function toggleVoice() {
     if (isRecording) { recognition.stop(); } else { recognition.start(); isRecording = true; document.getElementById('voice-btn').classList.add('recording'); }
 }
 
-function speak(text) {
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        var clean = text.replace(/[#*`_~]/g, '').substring(0, 300);
-        var u = new SpeechSynthesisUtterance(clean);
-        u.rate = 1; speechSynthesis.speak(u);
-    }
+function toggleTTS() {
+    ttsEnabled = !ttsEnabled;
+    localStorage.setItem('vmaxcode_tts', ttsEnabled);
+    document.getElementById('tts-btn').classList.toggle('active', ttsEnabled);
+    if (ttsEnabled) speak('Voice readback enabled');
+    else window.speechSynthesis && window.speechSynthesis.cancel();
 }
 
-// ── SEND MESSAGE VIA GAS ────────────────────────────────────────
+function speak(text) {
+    if (!ttsEnabled || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    var clean = text.replace(/[#*`_~]/g, '').substring(0, 400);
+    var u = new SpeechSynthesisUtterance(clean);
+    u.rate = 1; u.pitch = 1;
+    window.speechSynthesis.speak(u);
+}
+
+function saveProvider() {
+    providerIdx = parseInt(document.getElementById('provider-select').value);
+    localStorage.setItem('vmaxcode_provider', providerIdx);
+}
+
 function sendMessage() {
     var input = document.getElementById('message-input');
     var text = input.value.trim();
     if (!text) return;
-    
     if (!sessionId) sessionId = 'vc_' + Date.now().toString(36);
-    
     addMessage('user', text);
-    input.value = '';
-    input.style.height = 'auto';
+    input.value = ''; input.style.height = 'auto';
     document.getElementById('typing').style.display = 'block';
     document.getElementById('send-btn').disabled = true;
-    
-    var payload = JSON.stringify({
-        prompt: text,
-        session_id: sessionId
-    });
-    
-    fetch(GAS_URL + '?action=chat_minios&secret=' + SECRET, {
-        method: 'POST',
-        body: payload
-    })
+    var payload = JSON.stringify({ prompt: text, session_id: sessionId, provider_idx: providerIdx });
+    fetch(GAS_URL + '?action=chat_minios&secret=' + SECRET, { method: 'POST', body: payload })
     .then(function(r) { return r.json(); })
     .then(function(data) {
         document.getElementById('typing').style.display = 'none';
         document.getElementById('send-btn').disabled = false;
-        if (data.response) {
-            addMessage('ai', data.response);
-            speak(data.response);
-            if (data.session_id) {
-                sessionId = data.session_id;
-                localStorage.setItem('vmaxcode_session', sessionId);
-            }
-        } else if (data.error) {
-            addMessage('ai', '❌ ' + data.error);
-        } else {
-            addMessage('ai', '⚠️ No response received');
-        }
+        if (data.response) { addMessage('ai', data.response); speak(data.response); if (data.session_id) { sessionId = data.session_id; localStorage.setItem('vmaxcode_session', sessionId); } }
+        else if (data.error) addMessage('ai', '❌ ' + data.error);
+        else addMessage('ai', '⚠️ No response received');
     })
     .catch(function(e) {
         document.getElementById('typing').style.display = 'none';
@@ -150,7 +160,6 @@ function addMessage(role, content) {
     var messages = document.getElementById('messages');
     var welcome = messages.querySelector('.welcome');
     if (welcome) welcome.remove();
-    
     var div = document.createElement('div');
     div.className = 'message ' + role;
     div.innerHTML = formatMessage(content) + '<div class="time">' + new Date().toLocaleTimeString() + '</div>';
@@ -167,9 +176,7 @@ function formatMessage(text) {
     return text;
 }
 
-function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-}
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
 
 function uploadFile(input) {
     var file = input.files[0];
@@ -178,17 +185,10 @@ function uploadFile(input) {
     input.value = '';
 }
 
-// ── INIT ────────────────────────────────────────────────────────
 fetch(GAS_URL + '?action=health')
     .then(function(r) { return r.json(); })
-    .then(function(data) {
-        document.getElementById('status').textContent = '● Online';
-        document.getElementById('status').style.color = '#00ff88';
-    })
-    .catch(function() {
-        document.getElementById('status').textContent = '○ Offline';
-        document.getElementById('status').style.color = '#ff4444';
-    });
+    .then(function(data) { document.getElementById('status').textContent = '● Online'; document.getElementById('status').style.color = '#00ff88'; })
+    .catch(function() { document.getElementById('status').textContent = '○ Offline'; document.getElementById('status').style.color = '#ff4444'; });
 </script>
 </body>
 </html>
