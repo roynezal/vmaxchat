@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VMAXCODE — Web Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-webgl@0.16.0/lib/xterm-addon-webgl.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<style>
+:root {
+  --bg: #030a0f;
+  --surface: #071420;
+  --accent: #00d4ff;
+  --accent2: #00ff9d;
+  --text: #c8e6f0;
+  --muted: #4a7a8a;
+  --border: #0d3a4f;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; }
+body { display: flex; flex-direction: column; }
+
+#header {
+  background: var(--surface);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+#header .title { color: var(--accent); font-size: 0.85rem; letter-spacing: 0.1em; }
+#header .status { display: flex; gap: 12px; align-items: center; }
+#header .status .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+#header .status .dot.online { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+#header .status .dot.offline { background: #ff3355; }
+#header .status .dot.connecting { background: #ffaa00; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.3; } }
+
+#terminal-container {
+  flex: 1;
+  overflow: hidden;
+  padding: 4px;
+}
+#terminal { height: 100%; }
+
+#footer {
+  background: var(--surface);
+  padding: 4px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 0.6rem;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+/* Voice button */
+#voiceBtn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-family: inherit;
+}
+#voiceBtn:hover { color: var(--accent); border-color: var(--accent); }
+#voiceBtn.recording { color: #ff3355; border-color: #ff3355; animation: blink 1s infinite; }
+
+/* File input */
+#fileInput { display: none; }
+#fileBtn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-family: inherit;
+  margin-right: 8px;
+}
+#fileBtn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Overlay for file upload progress */
+#overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+}
+#overlay.show { display: flex; }
+#overlay .box {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  padding: 24px 32px;
+  border-radius: 8px;
+  text-align: center;
+}
+#overlay .box p { color: var(--accent); margin-bottom: 12px; }
+#overlay .box .bar {
+  width: 200px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#overlay .box .bar .fill {
+  height: 100%;
+  background: var(--accent2);
+  width: 0%;
+  transition: width 0.3s;
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="title">VMAXCODE</div>
+  <div class="status">
+    <span><span class="dot connecting" id="statusDot"></span> <span id="statusText">Connecting...</span></span>
+    <button id="fileBtn" onclick="document.getElementById('fileInput').click()">📎 Upload</button>
+    <input type="file" id="fileInput" onchange="uploadFile(this)">
+    <button id="voiceBtn" onclick="toggleVoice()">🎤 Voice</button>
+  </div>
+</div>
+
+<div id="terminal-container">
+  <div id="terminal"></div>
+</div>
+
+<div id="footer">
+  <span id="footer-left">VMAXCODE Terminal v1.0</span>
+  <span id="footer-right">Chunks: <span id="chunkCount">0</span> | Offset: <span id="offsetCount">0</span></span>
+</div>
+
+<div id="overlay">
+  <div class="box">
+    <p id="overlayText">Uploading...</p>
+    <div class="bar"><div class="fill" id="overlayFill"></div></div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbwTvs_1_4ZjDi7HSrpScpgHOGWeMsba0_Ia17skX6vUKCfeU-UlEz2h2wpNf7p2Prm5Fw/exec';
+var SECRET  = 'VMAXRAY2025';
+var POLL_INTERVAL = 300; // ms for output polling
+
+// ── STATE ───────────────────────────────────────────────────────
+var offset = 0;
+var connected = false;
+var reconnectTimer = null;
+
+// ── XTERM SETUP ─────────────────────────────────────────────────
+var term = new Terminal({
+  cursorBlink: true,
+  fontSize: 14,
+  fontFamily: "'Share Tech Mono', monospace",
+  theme: {
+    background: '#030a0f',
+    foreground: '#c8e6f0',
+    cursor: '#00d4ff',
+    selectionBackground: '#00d4ff44',
+    black: '#030a0f',
+    red: '#ff3355',
+    green: '#00ff9d',
+    yellow: '#ffcc00',
+    blue: '#00d4ff',
+    magenta: '#ff6bff',
+    cyan: '#00ffcc',
+    white: '#e0e0e0'
+  },
+  allowProposedApi: true
+});
+
+var fitAddon = new FitAddon.FitAddon();
+term.loadAddon(fitAddon);
+term.open(document.getElementById('terminal'));
+fitAddon.fit();
+
+// WebGL renderer if available
+try {
+  var webglAddon = new WebglAddon.WebglAddon();
+  term.loadAddon(webglAddon);
+} catch(e) {}
+
+window.addEventListener('resize', function() { fitAddon.fit(); sendResize(); });
+
+// ── TERMINAL INPUT → GAS ────────────────────────────────────────
+term.onData(function(data) {
+  sendInput(data);
+});
+
+function sendInput(data) {
+  var b64 = btoa(unescape(encodeURIComponent(data)));
+  fetch(GAS_URL + '?action=vmaxcode_input&secret=' + SECRET, {
+    method: 'POST',
+    body: JSON.stringify({ data: b64 })
+  }).catch(function() {});
+}
+
+function sendResize() {
+  var cols = term.cols;
+  var rows = term.rows;
+  fetch(GAS_URL + '?action=vmaxcode_resize&secret=' + SECRET, {
+    method: 'POST',
+    body: JSON.stringify({ cols: cols, rows: rows })
+  }).catch(function() {});
+}
+
+// ── OUTPUT POLL ─────────────────────────────────────────────────
+function pollOutput() {
+  fetch(GAS_URL + '?action=vmaxcode_poll_output&secret=' + SECRET + '&since=' + offset)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.chunks && data.chunks.length > 0) {
+        for (var i = 0; i < data.chunks.length; i++) {
+          var chunk = data.chunks[i];
+          try {
+            var raw = decodeURIComponent(escape(atob(chunk.chunk)));
+            term.write(raw);
+          } catch(e) {
+            // Skip malformed chunks
+          }
+          offset = chunk.offset + 1;
+        }
+        document.getElementById('chunkCount').textContent = data.total;
+        document.getElementById('offsetCount').textContent = offset;
+        setStatus('online');
+      } else {
+        // No new data but server responded — still connected
+        if (connected) setStatus('online');
+      }
+    })
+    .catch(function() {
+      setStatus('offline');
+    });
+}
+
+// ── STATUS ──────────────────────────────────────────────────────
+function setStatus(state) {
+  var dot = document.getElementById('statusDot');
+  var txt = document.getElementById('statusText');
+  dot.className = 'dot ' + state;
+  if (state === 'online') {
+    txt.textContent = 'Connected';
+    connected = true;
+  } else if (state === 'offline') {
+    txt.textContent = 'Disconnected';
+    connected = false;
+  } else {
+    txt.textContent = 'Connecting...';
+    connected = false;
+  }
+}
+
+// ── VOICE INPUT ─────────────────────────────────────────────────
+var recognition = null;
+var isRecording = false;
+
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.onresult = function(e) {
+    var text = e.results[0][0].transcript;
+    sendInput(text + '\n');
+  };
+  recognition.onend = function() {
+    isRecording = false;
+    document.getElementById('voiceBtn').classList.remove('recording');
+  };
+  recognition.onerror = function() {
+    isRecording = false;
+    document.getElementById('voiceBtn').classList.remove('recording');
+  };
+}
+
+function toggleVoice() {
+  if (!recognition) return alert('Speech not supported');
+  if (isRecording) {
+    recognition.stop();
+    isRecording = false;
+    document.getElementById('voiceBtn').classList.remove('recording');
+  } else {
+    recognition.start();
+    isRecording = true;
+    document.getElementById('voiceBtn').classList.add('recording');
+  }
+}
+
+// ── FILE UPLOAD ─────────────────────────────────────────────────
+function uploadFile(input) {
+  if (!input.files || input.files.length === 0) return;
+  var file = input.files[0];
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var b64 = e.target.result.split(',')[1];
+    var overlay = document.getElementById('overlay');
+    var fill = document.getElementById('overlayFill');
+    var text = document.getElementById('overlayText');
+    overlay.classList.add('show');
+    text.textContent = 'Uploading ' + file.name + '...';
+    fill.style.width = '50%';
+    
+    fetch(GAS_URL + '?action=vmaxcode_upload&secret=' + SECRET, {
+      method: 'POST',
+      body: JSON.stringify({ name: file.name, data: b64 })
+    }).then(function(r) { return r.json(); })
+    .then(function(data) {
+      fill.style.width = '100%';
+      text.textContent = 'Upload complete!';
+      setTimeout(function() { overlay.classList.remove('show'); }, 1000);
+    })
+    .catch(function() {
+      text.textContent = 'Upload failed';
+      setTimeout(function() { overlay.classList.remove('show'); }, 2000);
+    });
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+// ── HEARTBEAT ───────────────────────────────────────────────────
+function checkStatus() {
+  fetch(GAS_URL + '?action=vmaxcode_status&secret=' + SECRET)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.online) {
+        setStatus('online');
+      } else {
+        setStatus('offline');
+      }
+    })
+    .catch(function() {
+      setStatus('offline');
+    });
+}
+
+// ── INIT ────────────────────────────────────────────────────────
+term.writeln('\x1b[1;36mVMAXCODE Web Terminal v1.0\x1b[0m');
+term.writeln('\x1b[90mConnecting to session...\x1b[0m\n');
+
+setStatus('connecting');
+checkStatus();
+
+// Start output polling
+setInterval(pollOutput, POLL_INTERVAL);
+
+// Status check every 30s
+setInterval(checkStatus, 30000);
+
+// Initial poll
+setTimeout(pollOutput, 500);
+</script>
+</body>
+</html>
