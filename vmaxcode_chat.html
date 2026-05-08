@@ -52,6 +52,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 <option value="1">OpenRouter MiniMax</option>
 <option value="2">Groq Llama 8B</option>
 <option value="3">Groq Llama 70B</option>
+<option value="4">Cloudflare Llama 8B</option>
 </select>
 <button class="btn-icon" onclick="document.getElementById('file-input').click()" title="Upload">📎</button>
 <button class="btn-icon" id="voice-btn" onclick="toggleVoice()" title="Voice input">🎤</button>
@@ -80,7 +81,7 @@ var recognition = null;
 var isRecording = false;
 var ttsEnabled = localStorage.getItem('vmaxcode_tts') === 'true';
 var providerIdx = parseInt(localStorage.getItem('vmaxcode_provider') || '0');
-if (providerIdx > 3) { providerIdx = 0; localStorage.setItem('vmaxcode_provider', '0'); }
+if (providerIdx > 4) { providerIdx = 0; localStorage.setItem('vmaxcode_provider', '0'); }
 
 // Apply saved settings
 document.getElementById('provider-select').value = providerIdx;
