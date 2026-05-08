@@ -48,13 +48,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 </div>
 <div class="right">
 <select id="provider-select" onchange="saveProvider()">
-<option value="0">DeepSeek Chat</option>
-<option value="1">OpenRouter Qwen</option>
-<option value="2">OpenRouter Nemotron</option>
-<option value="3">OpenRouter MiniMax</option>
-<option value="4">OpenRouter Step</option>
-<option value="5">Groq Llama 8B</option>
-<option value="6">Groq Llama 70B</option>
+<option value="0">OpenRouter Nemotron</option>
+<option value="1">OpenRouter MiniMax</option>
+<option value="2">Groq Llama 8B</option>
+<option value="3">Groq Llama 70B</option>
 </select>
 <button class="btn-icon" onclick="document.getElementById('file-input').click()" title="Upload">📎</button>
 <button class="btn-icon" id="voice-btn" onclick="toggleVoice()" title="Voice input">🎤</button>
@@ -83,6 +80,7 @@ var recognition = null;
 var isRecording = false;
 var ttsEnabled = localStorage.getItem('vmaxcode_tts') === 'true';
 var providerIdx = parseInt(localStorage.getItem('vmaxcode_provider') || '0');
+if (providerIdx > 3) { providerIdx = 0; localStorage.setItem('vmaxcode_provider', '0'); }
 
 // Apply saved settings
 document.getElementById('provider-select').value = providerIdx;
@@ -185,9 +183,17 @@ function uploadFile(input) {
     input.value = '';
 }
 
-fetch(GAS_URL + '?action=health')
+fetch(GAS_URL + '?action=vmaxcode_status&secret=' + SECRET)
     .then(function(r) { return r.json(); })
-    .then(function(data) { document.getElementById('status').textContent = '● Online'; document.getElementById('status').style.color = '#00ff88'; })
+    .then(function(data) {
+        if (data && data.online) {
+            document.getElementById('status').textContent = '● Online';
+            document.getElementById('status').style.color = '#00ff88';
+        } else {
+            document.getElementById('status').textContent = '○ Offline';
+            document.getElementById('status').style.color = '#ff4444';
+        }
+    })
     .catch(function() { document.getElementById('status').textContent = '○ Offline'; document.getElementById('status').style.color = '#ff4444'; });
 </script>
 </body>
